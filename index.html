@@ -296,7 +296,11 @@ function autoConvert(srcId) {
   const ids = ['in-rub','in-usd','in-thb','in-btc'];
   const others = ids.filter(id => id !== srcId);
   const val = document.getElementById(srcId).value.trim();
-  if (!val || clr(val) === 0) return;
+  // Если поле пустое или 0 — очищаем все остальные
+  if (!val || clr(val) === 0) {
+    others.forEach(id => document.getElementById(id).value = '');
+    return;
+  }
   others.forEach(id => document.getElementById(id).value = '');
   convert();
 }
