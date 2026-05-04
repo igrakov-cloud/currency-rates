@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Курсы / Конвертер</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans-serif;
+    background: #0d0d0d;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 340px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .tab.active {
+    background: #2a2a2a;
+    color: #fff;
+  }
+
+  .panel { display: none; width: 100%; max-width: 340px; }
+  .panel.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .card .label {
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .card .value {
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    transition: color 0.3s;
+  }
+  .card .value.up { color: #34c759; }
+  .card .value.down { color: #ff3b30; }
+  .card .sub {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+  }
+  .last-update {
+    font-size: 11px;
+    color: #444;
+    text-align: center;
+    margin: 8px 0 16px;
+  }
+
+  /* CONVERTER */
+  .conv-card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .conv-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .conv-row:last-child { margin-bottom: 0; }
+  .conv-input {
+    flex: 1;
+    background: #2a2a2a;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    outline: none;
+    min-width: 0;
+  }
+  .conv-input::placeholder { color: #555; }
+  .conv-input:focus { background: #333; }
+  .conv-currency {
+    font-size: 14px;
+    font-weight: 600;
+    color: #888;
+    min-width: 48px;
+    text-align: right;
+  }
+  .conv-equals {
+    font-size: 18px;
+    color: #555;
+    text-align: center;
+    padding: 4px 0;
+  }
+  .conv-rate-hint {
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+    margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="rates">Курсы</div>
+  <div class="tab" data-tab="convert">Конвертер</div>
+</div>
+
+<!-- PANEL: КУРСЫ -->
+<div class="panel active" id="panel-rates">
+  <div class="card">
+    <div class="label">🇺🇸 Доллар → Рубль</div>
+    <div class="value" id="usd-rate">—</div>
+    <div class="sub">ЦБ РФ</div>
+  </div>
+  <div class="card">
+    <div class="label">₿ Биткоин → Доллар</div>
+    <div class="value" id="btc-rate">—</div>
+    <div class="sub" id="btc-rub">₽ —</div>
+  </div>
+  <div class="last-update" id="last-update">⏳ загрузка...</div>
+</div>
+
+<!-- PANEL: КОНВЕРТЕР -->
+<div class="panel" id="panel-convert">
+  <div class="conv-card">
+    <div class="conv-row">
+      <input class="conv-input" id="in-rub" type="number" placeholder="0" inputmode="decimal">
+      <span class="conv-currency">₽</span>
+    </div>
+    <div class="conv-equals">▼</div>
+    <div class="conv-row">
+      <input class="conv-input" id="in-usd" type="number" placeholder="0" inputmode="decimal">
+      <span class="conv-currency">$</span>
+    </div>
+    <div class="conv-equals">▼</div>
+    <div class="conv-row">
+      <input class="conv-input" id="in-btc" type="number" placeholder="0" inputmode="decimal">
+      <span class="conv-currency">BTC</span>
+    </div>
+    <div class="conv-rate-hint" id="conv-hint">Загружаю курсы...</div>
+  </div>
+</div>
+
+<script>
+// === СОСТОЯНИЕ ===
+let state = {
+  usdRub: null,
+  btcUsd: null
+};
+let updating = false; // флаг, чтобы не зациклиться
+
+// === КЕШ (localStorage, 5 мин) ===
+const CACHE_TTL = 5 * 60 * 1000;
+function getCached(key) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, ts } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) return null;
+    return data;
+  } catch { return null; }
+}
+function setCached(key, data) {
+  try { localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() })); } catch {}
+}
+
+function formatNum(n, d) { return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
+function formatNumUSD(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+
+// === ЗАПРОСЫ ===
+async function fetchUSDRUB() {
+  try {
+    const c = getCached('cbr_usd');
+    if (c) return c;
+    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+    const d = await r.json();
+    const v = d.Valute.USD.Value;
+    setCached('cbr_usd', v);
+    return v;
+  } catch {
+    try {
+      const r = await fetch('https://api.exchangerate.host/latest?base=USD&symbols=RUB');
+      const d = await r.json();
+      return d.rates.RUB;
+    } catch { return null; }
+  }
+}
+
+async function fetchBTCUSD() {
+  try {
+    const c = getCached('cg_btc_usd');
+    if (c) return c;
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const d = await r.json();
+    const v = d.bitcoin.usd;
+    setCached('cg_btc_usd', v);
+    return v;
+  } catch { return null; }
+}
+
+async function updateRates() {
+  const [u, b] = await Promise.all([fetchUSDRUB(), fetchBTCUSD()]);
+  state.usdRub = u;
+  state.btcUsd = b;
+  return { usdRub: u, btcUsd: b };
+}
+
+// === ОБНОВЛЕНИЕ UI ===
+function renderRates() {
+  const now = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const uEl = document.getElementById('usd-rate');
+  const bEl = document.getElementById('btc-rate');
+
+  if (state.usdRub !== null) {
+    uEl.textContent = formatNum(state.usdRub, 2) + ' ₽';
+    uEl.className = 'value';
+  } else {
+    uEl.textContent = '—';
+    uEl.className = 'value';
+  }
+
+  if (state.btcUsd !== null) {
+    bEl.textContent = formatNumUSD(state.btcUsd);
+    bEl.className = 'value';
+    if (state.usdRub !== null) {
+      document.getElementById('btc-rub').textContent = '₽ ' + formatNum(state.btcUsd * state.usdRub, 0);
+    }
+  } else {
+    bEl.textContent = '—';
+    bEl.className = 'value';
+  }
+
+  document.getElementById('last-update').textContent = '🔄 ' + now;
+  updateConverterHint();
+}
+
+function updateConverterHint() {
+  const el = document.getElementById('conv-hint');
+  if (state.usdRub === null && state.btcUsd === null) {
+    el.textContent = '⏳ Загружаю курсы...';
+  } else if (state.usdRub !== null) {
+    el.textContent = '1 $ = ' + formatNum(state.usdRub, 2) + ' ₽';
+    if (state.btcUsd !== null) {
+      el.textContent += '  ·  1 BTC = ' + formatNumUSD(state.btcUsd);
+    }
+  }
+}
+
+// === КОНВЕРТЕР (без зацикливания) ===
+function recalc(source) {
+  if (updating) return;
+  updating = true;
+
+  const rubIn = document.getElementById('in-rub');
+  const usdIn = document.getElementById('in-usd');
+  const btcIn = document.getElementById('in-btc');
+
+  const rubVal = parseFloat(rubIn.value) || 0;
+  const usdVal = parseFloat(usdIn.value) || 0;
+  const btcVal = parseFloat(btcIn.value) || 0;
+
+  if (source === 'rub') {
+    if (state.usdRub && state.usdRub > 0) {
+      const u = rubVal / state.usdRub;
+      usdIn.value = formatNum(u, 2);
+      if (state.btcUsd && state.btcUsd > 0) {
+        btcIn.value = formatNum(u / state.btcUsd, 8);
+      }
+    }
+  } else if (source === 'usd') {
+    if (state.usdRub && state.usdRub > 0) {
+      rubIn.value = formatNum(usdVal * state.usdRub, 2);
+    }
+    if (state.btcUsd && state.btcUsd > 0) {
+      btcIn.value = formatNum(usdVal / state.btcUsd, 8);
+    }
+  } else if (source === 'btc') {
+    if (state.btcUsd && state.btcUsd > 0) {
+      const u = btcVal * state.btcUsd;
+      usdIn.value = formatNum(u, 2);
+      if (state.usdRub && state.usdRub > 0) {
+        rubIn.value = formatNum(u * state.usdRub, 2);
+      }
+    }
+  }
+
+  updating = false;
+}
+
+// === ИНИЦИАЛИЗАЦИЯ ===
+async function init() {
+  // Сначала пробуем кеш
+  const cUsd = getCached('cbr_usd');
+  const cBtc = getCached('cg_btc_usd');
+  if (cUsd) state.usdRub = cUsd;
+  if (cBtc) state.btcUsd = cBtc;
+  if (cUsd || cBtc) {
+    renderRates();
+    updateConverterHint();
+  }
+
+  // Свежие данные
+  await updateRates();
+  renderRates();
+}
+
+// === СОБЫТИЯ: конвертер ===
+document.getElementById('in-rub').addEventListener('input', () => recalc('rub'));
+document.getElementById('in-usd').addEventListener('input', () => recalc('usd'));
+document.getElementById('in-btc').addEventListener('input', () => recalc('btc'));
+
+// === TABS ===
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// === СТАРТ ===
+init();
+
+// Автообновление каждые 60 сек
+setInterval(async () => {
+  await updateRates();
+  renderRates();
+}, 60000);
+</script>
+</body>
+</html>
