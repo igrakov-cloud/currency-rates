@@ -17,7 +17,6 @@
     padding: 32px 16px;
   }
 
-  /* TABS */
   .tabs {
     display: flex;
     gap: 0;
@@ -41,15 +40,11 @@
     -webkit-tap-highlight-color: transparent;
     user-select: none;
   }
-  .tab.active {
-    background: #2a2a2a;
-    color: #fff;
-  }
+  .tab.active { background: #2a2a2a; color: #fff; }
 
   .panel { display: none; width: 100%; max-width: 340px; }
   .panel.active { display: block; }
 
-  /* CARDS */
   .card {
     background: #1a1a1a;
     border-radius: 20px;
@@ -67,15 +62,9 @@
     font-size: 34px;
     font-weight: 600;
     letter-spacing: -0.5px;
-    transition: color 0.3s;
   }
-  .card .value.up { color: #34c759; }
-  .card .value.down { color: #ff3b30; }
-  .card .sub {
-    font-size: 12px;
-    color: #666;
-    margin-top: 4px;
-  }
+  .card .sub { font-size: 12px; color: #666; margin-top: 4px; }
+  .sub-flex { display: flex; gap: 12px; font-size: 12px; color: #666; margin-top: 4px; }
   .last-update {
     font-size: 11px;
     color: #444;
@@ -83,7 +72,6 @@
     margin: 8px 0 16px;
   }
 
-  /* CONVERTER */
   .conv-card {
     background: #1a1a1a;
     border-radius: 20px;
@@ -118,14 +106,14 @@
     font-size: 14px;
     font-weight: 600;
     color: #888;
-    min-width: 48px;
+    min-width: 44px;
     text-align: right;
   }
   .conv-equals {
-    font-size: 18px;
+    font-size: 14px;
     color: #555;
     text-align: center;
-    padding: 4px 0;
+    padding: 2px 0;
   }
   .conv-rate-hint {
     font-size: 12px;
@@ -133,7 +121,6 @@
     text-align: center;
     margin-top: 12px;
   }
-
   .calc-btn {
     background: #2a6eff;
     border: none;
@@ -152,18 +139,21 @@
 </head>
 <body>
 
-<!-- TABS -->
 <div class="tabs">
   <div class="tab active" data-tab="rates">Курсы</div>
   <div class="tab" data-tab="convert">Конвертер</div>
 </div>
 
-<!-- PANEL: КУРСЫ -->
 <div class="panel active" id="panel-rates">
   <div class="card">
     <div class="label">🇺🇸 Доллар → Рубль</div>
     <div class="value" id="usd-rate">—</div>
     <div class="sub">ЦБ РФ</div>
+  </div>
+  <div class="card">
+    <div class="label">🇹🇭 Бат → Рубль</div>
+    <div class="value" id="thb-rate">—</div>
+    <div class="sub" id="thb-usd">ЦБ РФ</div>
   </div>
   <div class="card">
     <div class="label">₿ Биткоин → Доллар</div>
@@ -173,21 +163,25 @@
   <div class="last-update" id="last-update">⏳ загрузка...</div>
 </div>
 
-<!-- PANEL: КОНВЕРТЕР -->
 <div class="panel" id="panel-convert">
   <div class="conv-card">
     <div class="conv-row">
-      <input class="conv-input" id="in-rub" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="₽">
+      <input class="conv-input" id="in-rub" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="рубли">
       <span class="conv-currency">₽</span>
     </div>
     <div class="conv-equals">▼</div>
     <div class="conv-row">
-      <input class="conv-input" id="in-usd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="$">
+      <input class="conv-input" id="in-usd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="доллары">
       <span class="conv-currency">$</span>
     </div>
     <div class="conv-equals">▼</div>
     <div class="conv-row">
-      <input class="conv-input" id="in-btc" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="BTC">
+      <input class="conv-input" id="in-thb" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="тайские баты">
+      <span class="conv-currency">THB</span>
+    </div>
+    <div class="conv-equals">▼</div>
+    <div class="conv-row">
+      <input class="conv-input" id="in-btc" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="биткоины">
       <span class="conv-currency">BTC</span>
     </div>
     <div class="conv-rate-hint" id="conv-hint">⏳ загрузка курсов...</div>
@@ -196,7 +190,7 @@
 </div>
 
 <script>
-const state = { usdRub: null, btcUsd: null };
+const state = { usdRub: null, thbRub: null, btcUsd: null, thbUsd: null };
 const CACHE_TTL = 300000;
 
 function getCache(k) {
@@ -217,71 +211,104 @@ function clr(s) {
 function fmt(n, d) { return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function fmt$(n) { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
 
-async function fetchUSDRUB() {
-  let c = getCache('u'); if (c) return c;
-  try {
-    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
-    const v = (await r.json()).Valute.USD.Value;
-    setCache('u', v); return v;
-  } catch {
-    try { const r=await fetch('https://api.exchangerate.host/latest?base=USD&symbols=RUB'); return (await r.json()).rates.RUB; } catch { return null; }
-  }
-}
-async function fetchBTCUSD() {
-  let c = getCache('b'); if (c) return c;
-  try {
-    const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    const v=(await r.json()).bitcoin.usd;
-    setCache('b', v); return v;
-  } catch { return null; }
+function cross(a, b, fromRub, toRub) {
+  if (fromRub && toRub) return a * (toRub / fromRub);
+  if (fromRub) return a / fromRub;
+  if (toRub) return a * toRub;
+  return 0;
 }
 
-async function refreshRates() {
-  const [u, b] = await Promise.all([fetchUSDRUB(), fetchBTCUSD()]);
-  state.usdRub = u; state.btcUsd = b;
-  // render rates
+async function fetchRates() {
+  const cUsd = getCache('u'), cThb = getCache('t'), cBtc = getCache('b');
+  if (cUsd) state.usdRub = cUsd;
+  if (cThb) state.thbRub = cThb;
+  if (cBtc) state.btcUsd = cBtc;
+
+  try {
+    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+    const d = await r.json();
+    state.usdRub = d.Valute.USD.Value;
+    state.thbRub = d.Valute.THB.Value;
+    setCache('u', state.usdRub);
+    setCache('t', state.thbRub);
+  } catch {
+    // fallback — оставляем кеш если есть
+  }
+
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const d = await r.json();
+    state.btcUsd = d.bitcoin.usd;
+    setCache('b', state.btcUsd);
+  } catch {}
+
+  if (state.usdRub && state.thbRub) {
+    state.thbUsd = state.thbRub / state.usdRub;
+  }
+
+  renderRates();
+}
+
+function renderRates() {
   const now = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const u = state.usdRub, t = state.thbRub, b = state.btcUsd;
+
   document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
+  document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
+  document.getElementById('thb-usd').textContent = (u && t) ? '1 THB = ' + fmt(t/u,4) + ' $' : '—';
   document.getElementById('btc-rate').textContent = b ? fmt$(b) : '—';
   document.getElementById('btc-rub').textContent = (u && b) ? '₽ ' + fmt(b*u, 0) : '—';
   document.getElementById('last-update').textContent = '🔄 ' + now;
-  const h = document.getElementById('conv-hint');
-  if (u) {
-    h.textContent = '1 $ = ' + fmt(u,2) + ' ₽' + (b ? '  ·  1 BTC = ' + fmt$(b) : '');
-  }
+
+  const hint = document.getElementById('conv-hint');
+  const parts = [];
+  if (u) parts.push('1 $ = ' + fmt(u,2) + ' ₽');
+  if (t) parts.push('1 THB = ' + fmt(t,2) + ' ₽');
+  if (b) parts.push('1 BTC = ' + fmt$(b));
+  hint.textContent = parts.join('  ·  ') || '⏳ загрузка...';
 }
 
 function convert() {
-  const rubV = clr(document.getElementById('in-rub').value);
-  const usdV = clr(document.getElementById('in-usd').value);
-  const btcV = clr(document.getElementById('in-btc').value);
+  const r = clr(document.getElementById('in-rub').value);
+  const d = clr(document.getElementById('in-usd').value);
+  const t = clr(document.getElementById('in-thb').value);
+  const b = clr(document.getElementById('in-btc').value);
 
-  if (rubV && !usdV && !btcV) {
-    if (state.usdRub) {
-      const u = rubV / state.usdRub;
-      document.getElementById('in-usd').value = fmt(u,2);
-      if (state.btcUsd) document.getElementById('in-btc').value = fmt(u / state.btcUsd, 8);
-    }
-  } else if (usdV && !rubV && !btcV) {
-    if (state.usdRub) document.getElementById('in-rub').value = fmt(usdV * state.usdRub, 2);
-    if (state.btcUsd) document.getElementById('in-btc').value = fmt(usdV / state.btcUsd, 8);
-  } else if (btcV && !rubV && !usdV) {
-    if (state.btcUsd) {
-      const u = btcV * state.btcUsd;
-      document.getElementById('in-usd').value = fmt(u,2);
-      if (state.usdRub) document.getElementById('in-rub').value = fmt(u * state.usdRub, 2);
-    }
-  }
+  const filled = [r ? 'rub':0, d ? 'usd':0, t ? 'thb':0, b ? 'btc':0].filter(Boolean);
+
+  if (filled.length !== 1) return; // только одно поле заполнено
+
+  const src = filled[0];
+  let val = 0;
+  if (src === 'rub') val = r;
+  else if (src === 'usd') val = d;
+  else if (src === 'thb') val = t;
+  else if (src === 'btc') val = b;
+
+  // Сначала переводим всё в рубли
+  let inRub = 0;
+  if (src === 'rub') inRub = val;
+  else if (src === 'usd' && state.usdRub) inRub = val * state.usdRub;
+  else if (src === 'thb' && state.thbRub) inRub = val * state.thbRub;
+  else if (src === 'btc' && state.btcUsd && state.usdRub) inRub = val * state.btcUsd * state.usdRub;
+
+  if (!inRub) return;
+
+  // Из рублей во всё остальное
+  const fields = {
+    rub: document.getElementById('in-rub'),
+    usd: document.getElementById('in-usd'),
+    thb: document.getElementById('in-thb'),
+    btc: document.getElementById('in-btc')
+  };
+
+  if (src !== 'rub' && state.usdRub) fields.rub.value = fmt(inRub, 2);
+  if (src !== 'usd' && state.usdRub) fields.usd.value = fmt(inRub / state.usdRub, 2);
+  if (src !== 'thb' && state.thbRub) fields.thb.value = fmt(inRub / state.thbRub, 2);
+  if (src !== 'btc' && state.btcUsd && state.usdRub) fields.btc.value = fmt(inRub / (state.btcUsd * state.usdRub), 8);
 }
 
-// Init
-(async () => {
-  await refreshRates();
-  // auto-refresh every 60s
-  setInterval(refreshRates, 60000);
-})();
-
-// Tab switching
+// Tabs
 document.querySelectorAll('.tab').forEach(t => {
   t.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -291,15 +318,17 @@ document.querySelectorAll('.tab').forEach(t => {
   });
 });
 
-// Convert button
+// Convert
 document.getElementById('calc-btn').addEventListener('click', convert);
-
-// Enter key triggers convert
-['in-rub','in-usd','in-btc'].forEach(id => {
+['in-rub','in-usd','in-thb','in-btc'].forEach(id => {
   document.getElementById(id).addEventListener('keydown', e => {
     if (e.key === 'Enter') convert();
   });
 });
+
+// Init
+fetchRates();
+setInterval(fetchRates, 60000);
 </script>
 </body>
 </html>
