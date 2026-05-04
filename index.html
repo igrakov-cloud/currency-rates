@@ -160,17 +160,17 @@
 <div class="panel" id="panel-convert">
   <div class="conv-card">
     <div class="conv-row">
-      <input class="conv-input" id="in-rub" type="number" placeholder="0" inputmode="decimal">
+      <input class="conv-input" id="in-rub" type="text" inputmode="decimal" placeholder="0">
       <span class="conv-currency">₽</span>
     </div>
     <div class="conv-equals">▼</div>
     <div class="conv-row">
-      <input class="conv-input" id="in-usd" type="number" placeholder="0" inputmode="decimal">
+      <input class="conv-input" id="in-usd" type="text" inputmode="decimal" placeholder="0">
       <span class="conv-currency">$</span>
     </div>
     <div class="conv-equals">▼</div>
     <div class="conv-row">
-      <input class="conv-input" id="in-btc" type="number" placeholder="0" inputmode="decimal">
+      <input class="conv-input" id="in-btc" type="text" inputmode="decimal" placeholder="0">
       <span class="conv-currency">BTC</span>
     </div>
     <div class="conv-rate-hint" id="conv-hint">Загружаю курсы...</div>
@@ -202,6 +202,27 @@ function setCached(key, data) {
 
 function formatNum(n, d) { return Number(n).toLocaleString('ru-RU', { minimumFractionDigits: d, maximumFractionDigits: d }); }
 function formatNumUSD(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function parseLocalNum(s) {
+  if (!s) return NaN;
+  // Сначала убираем все пробелы (включая thin space), оставляем только цифры, запятую и точку
+  let clean = String(s).replace(/[^\d,.]/g, '');
+  // Если есть и запятая, и точка — берём последний разделитель как десятичный
+  if (clean.includes(',') && clean.includes('.')) {
+    const lastDot = clean.lastIndexOf('.');
+    const lastComma = clean.lastIndexOf(',');
+    if (lastComma > lastDot) {
+      // запятая — десятичная: убираем все точки (тысячные) и меняем запятую на точку
+      clean = clean.replace(/\./g, '').replace(',', '.');
+    } else {
+      // точка — десятичная: убираем все запятые (тысячные)
+      clean = clean.replace(/,/g, '');
+    }
+  } else if (clean.includes(',')) {
+    // Только запятая — она десятичная
+    clean = clean.replace(',', '.');
+  }
+  return parseFloat(clean);
+}
 
 // === ЗАПРОСЫ ===
 async function fetchUSDRUB() {
@@ -291,9 +312,9 @@ function recalc(source) {
   const usdIn = document.getElementById('in-usd');
   const btcIn = document.getElementById('in-btc');
 
-  const rubVal = parseFloat(rubIn.value) || 0;
-  const usdVal = parseFloat(usdIn.value) || 0;
-  const btcVal = parseFloat(btcIn.value) || 0;
+  const rubVal = parseLocalNum(rubIn.value) || 0;
+  const usdVal = parseLocalNum(usdIn.value) || 0;
+  const btcVal = parseLocalNum(btcIn.value) || 0;
 
   if (source === 'rub') {
     if (state.usdRub && state.usdRub > 0) {
