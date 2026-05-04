@@ -227,8 +227,8 @@ async function fetchRates() {
   try {
     const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
     const d = await r.json();
-    state.usdRub = d.Valute.USD.Value;
-    state.thbRub = d.Valute.THB.Value;
+    state.usdRub = d.Valute.USD.Value / (d.Valute.USD.Nominal || 1);
+    state.thbRub = d.Valute.THB.Value / (d.Valute.THB.Nominal || 1);
     setCache('u', state.usdRub);
     setCache('t', state.thbRub);
   } catch {
