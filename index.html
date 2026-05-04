@@ -64,43 +64,27 @@
     letter-spacing: -0.5px;
   }
   .card .sub { font-size: 12px; color: #666; margin-top: 4px; }
-  .sub-flex { display: flex; gap: 12px; font-size: 12px; color: #666; margin-top: 4px; }
 
-  /* Refresh bar */
   .refresh-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    background: #1a1a1a;
+    justify-content: center;
+    background: #2a6eff;
     border-radius: 14px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     width: 100%;
     max-width: 400px;
     margin-bottom: 10px;
-  }
-  .refresh-time {
-    font-size: 12px;
-    color: #555;
-  }
-  .refresh-btn {
-    background: #2a6eff;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #fff;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
-  .refresh-btn:active { background: #1a5eef; }
-  .refresh-btn.loading { background: #555; }
-
-  .last-update {
-    font-size: 11px;
-    color: #444;
-    text-align: center;
-    margin: 8px 0 16px;
+  .refresh-bar:active { background: #1a5eef; }
+  .refresh-bar.loading { background: #555; }
+  .refresh-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
   }
 
   .conv-card {
@@ -108,15 +92,13 @@
     border-radius: 20px;
     padding: 24px;
     width: 100%;
-    margin-bottom: 10px;
   }
   .conv-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  .conv-row:last-child { margin-bottom: 0; }
   .conv-input {
     flex: 1;
     background: #2a2a2a;
@@ -137,36 +119,15 @@
     font-size: 14px;
     font-weight: 600;
     color: #888;
-    min-width: 44px;
+    min-width: 38px;
     text-align: right;
   }
-  .conv-equals {
-    font-size: 14px;
+
+  .conv-rate {
+    font-size: 12px;
     color: #555;
-    text-align: center;
-    padding: 2px 0;
+    padding: 4px 0 10px 14px;
   }
-  .conv-rate-hint {
-    font-size: 11px;
-    color: #555;
-    text-align: center;
-    margin-top: 10px;
-    line-height: 1.5;
-  }
-  .calc-btn {
-    background: #2a6eff;
-    border: none;
-    border-radius: 14px;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #fff;
-    width: 100%;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    margin-top: 4px;
-  }
-  .calc-btn:active { background: #1a5eef; }
 </style>
 </head>
 <body>
@@ -176,7 +137,6 @@
   <div class="tab" data-tab="convert">Конвертер</div>
 </div>
 
-<!-- PANEL: КУРСЫ -->
 <div class="panel active" id="panel-rates">
   <div class="card">
     <div class="label">🇺🇸 Доллар → Рубль</div>
@@ -193,36 +153,39 @@
     <div class="value" id="btc-rate">—</div>
     <div class="sub" id="btc-rub">📊 CoinGecko</div>
   </div>
-  <div class="refresh-bar">
-    <span class="refresh-time" id="update-time">⏳ загрузка...</span>
-    <button class="refresh-btn" id="refresh-btn">🔄 Обновить</button>
+  <div class="refresh-bar" id="refresh-btn">
+    <span class="refresh-text" id="update-time">⏳ загрузка...</span>
   </div>
 </div>
 
-<!-- PANEL: КОНВЕРТЕР -->
 <div class="panel" id="panel-convert">
   <div class="conv-card">
     <div class="conv-row">
       <input class="conv-input" id="in-rub" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="рубли">
       <span class="conv-currency">₽</span>
     </div>
-    <div class="conv-equals">▼</div>
+    <div class="conv-rate" id="rate-usd">1 $ = —</div>
+
     <div class="conv-row">
       <input class="conv-input" id="in-usd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="доллары">
       <span class="conv-currency">$</span>
     </div>
-    <div class="conv-equals">▼</div>
+    <div class="conv-rate" id="rate-thb">1 THB = —</div>
+
     <div class="conv-row">
       <input class="conv-input" id="in-thb" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="тайские баты">
       <span class="conv-currency">THB</span>
     </div>
-    <div class="conv-equals">▼</div>
+    <div class="conv-rate" id="rate-btc">1 BTC = —</div>
+
     <div class="conv-row">
       <input class="conv-input" id="in-btc" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="биткоины">
       <span class="conv-currency">BTC</span>
     </div>
-    <div class="conv-rate-hint" id="conv-hint"></div>
-    <button class="calc-btn" id="calc-btn">Рассчитать</button>
+
+    <div class="refresh-bar" id="refresh-btn2" style="margin-top:16px">
+      <span class="refresh-text" id="update-time2">⏳ загрузка...</span>
+    </div>
   </div>
 </div>
 
@@ -270,36 +233,39 @@ async function fetchRates() {
     setCache('b', state.btcUsd);
   } catch {}
 
-  renderRates();
+  renderAll();
 }
 
-function renderRates() {
+function renderAll() {
   const now = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   const u = state.usdRub, t = state.thbRub, b = state.btcUsd;
 
+  // Main rates tab
   document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
   document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
   document.getElementById('thb-usd').textContent = '📊 ЦБ РФ · 1 THB ≈ ' + (u && t ? fmt(t/u,4) : '—') + ' $';
   document.getElementById('btc-rate').textContent = b ? fmt$(b) : '—';
   document.getElementById('btc-rub').textContent = '📊 CoinGecko · ' + ((u && b) ? '₽ ' + fmt(b*u, 0) : '—');
 
+  // Update times
   document.getElementById('update-time').textContent = '🔄 ' + now;
+  document.getElementById('update-time2').textContent = '🔄 ' + now;
 
-  const hint = document.getElementById('conv-hint');
-  const parts = [];
-  if (u) parts.push('📊 ЦБ РФ: 1 $ = ' + fmt(u,2) + ' ₽');
-  if (t) parts.push('1 THB = ' + fmt(t,2) + ' ₽');
-  if (b) parts.push('📊 CoinGecko: 1 BTC = ' + fmt$(b));
-  hint.textContent = parts.join('\n');
+  // Converter rates
+  document.getElementById('rate-usd').textContent = u ? '📊 ЦБ РФ: 1 $ = ' + fmt(u,2) + ' ₽' : '⏳';
+  if (u && t) {
+    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽ = ' + fmt(t/u,4) + ' $';
+  } else {
+    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽' : '⏳';
+  }
+  document.getElementById('rate-btc').textContent = (u && b) ? '📊 CoinGecko: 1 BTC = ' + fmt$(b) + ' = ' + fmt(b*u,0) + ' ₽' : '⏳';
 }
 
 async function refreshAll() {
-  const btn = document.getElementById('refresh-btn');
-  btn.classList.add('loading');
-  btn.textContent = '⏳';
+  const btns = [document.getElementById('refresh-btn'), document.getElementById('refresh-btn2')];
+  btns.forEach(b => { b.classList.add('loading'); b.querySelector('span').textContent = '⏳ обновление...'; });
   await fetchRates();
-  btn.classList.remove('loading');
-  btn.textContent = '🔄 Обновить';
+  btns.forEach(b => { b.classList.remove('loading'); b.querySelector('span').textContent = '🔄 ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); });
 }
 
 function convert() {
@@ -308,39 +274,25 @@ function convert() {
   const t = clr(document.getElementById('in-thb').value);
   const b = clr(document.getElementById('in-btc').value);
 
-  const filled = [r ? 'rub':0, d ? 'usd':0, t ? 'thb':0, b ? 'btc':0].filter(Boolean);
+  const filled = [['rub',r],['usd',d],['thb',t],['btc',b]].filter(p => p[1] > 0);
   if (filled.length !== 1) return;
 
-  const src = filled[0];
-  let val = 0;
-  if (src === 'rub') val = r;
-  else if (src === 'usd') val = d;
-  else if (src === 'thb') val = t;
-  else if (src === 'btc') val = b;
-
+  const [src, val] = filled[0];
   let inRub = 0;
   if (src === 'rub') inRub = val;
   else if (src === 'usd' && state.usdRub) inRub = val * state.usdRub;
   else if (src === 'thb' && state.thbRub) inRub = val * state.thbRub;
   else if (src === 'btc' && state.btcUsd && state.usdRub) inRub = val * state.btcUsd * state.usdRub;
-
   if (!inRub) return;
 
-  const fields = {
-    rub: document.getElementById('in-rub'),
-    usd: document.getElementById('in-usd'),
-    thb: document.getElementById('in-thb'),
-    btc: document.getElementById('in-btc')
-  };
-
-  if (src !== 'rub' && state.usdRub) fields.rub.value = fmt(inRub, 2);
-  if (src !== 'usd' && state.usdRub) fields.usd.value = fmt(inRub / state.usdRub, 2);
-  if (src !== 'thb' && state.thbRub) fields.thb.value = fmt(inRub / state.thbRub, 2);
-  if (src !== 'btc' && state.btcUsd && state.usdRub) fields.btc.value = fmt(inRub / (state.btcUsd * state.usdRub), 8);
+  const fields = { rub: document.getElementById('in-rub'), usd: document.getElementById('in-usd'), thb: document.getElementById('in-thb'), btc: document.getElementById('in-btc') };
+  if (src !== 'rub') fields.rub.value = fmt(inRub, 2);
+  if (src !== 'usd') fields.usd.value = fmt(inRub / state.usdRub, 2);
+  if (src !== 'thb') fields.thb.value = fmt(inRub / state.thbRub, 2);
+  if (src !== 'btc') fields.btc.value = fmt(inRub / (state.btcUsd * state.usdRub), 8);
 }
 
-// Auto-convert with debounce
-function prepareAndConvert(srcId) {
+function autoConvert(srcId) {
   const ids = ['in-rub','in-usd','in-thb','in-btc'];
   const others = ids.filter(id => id !== srcId);
   const val = document.getElementById(srcId).value.trim();
@@ -353,13 +305,10 @@ const debounceTimers = {};
 ['in-rub','in-usd','in-thb','in-btc'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {
     clearTimeout(debounceTimers[id]);
-    debounceTimers[id] = setTimeout(() => prepareAndConvert(id), 300);
+    debounceTimers[id] = setTimeout(() => autoConvert(id), 300);
   });
   document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === 'Return') {
-      clearTimeout(debounceTimers[id]);
-      prepareAndConvert(id);
-    }
+    if (e.key === 'Enter' || e.key === 'Return') autoConvert(id);
   });
 });
 
@@ -373,9 +322,9 @@ document.querySelectorAll('.tab').forEach(t => {
   });
 });
 
-// Events
-document.getElementById('calc-btn').addEventListener('click', convert);
+// Refresh
 document.getElementById('refresh-btn').addEventListener('click', refreshAll);
+document.getElementById('refresh-btn2').addEventListener('click', refreshAll);
 
 // Init
 fetchRates();
