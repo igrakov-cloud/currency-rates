@@ -318,13 +318,33 @@ document.querySelectorAll('.tab').forEach(t => {
   });
 });
 
-// Convert
-document.getElementById('calc-btn').addEventListener('click', convert);
+// Подготовка полей перед конвертацией: чистим другие
+function prepareAndConvert(sourceId) {
+  const ids = ['in-rub','in-usd','in-thb','in-btc'];
+  const others = ids.filter(id => id !== sourceId);
+  const val = document.getElementById(sourceId).value.trim();
+  if (!val || clr(val) === 0) return;
+  others.forEach(id => document.getElementById(id).value = '');
+  convert();
+}
+
+// Auto-convert на input с дебаунсом 300мс (не дёргается при быстром наборе)
+const debounceTimers = {};
 ['in-rub','in-usd','in-thb','in-btc'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    clearTimeout(debounceTimers[id]);
+    debounceTimers[id] = setTimeout(() => prepareAndConvert(id), 300);
+  });
   document.getElementById(id).addEventListener('keydown', e => {
-    if (e.key === 'Enter') convert();
+    if (e.key === 'Enter' || e.key === 'Return') {
+      clearTimeout(debounceTimers[id]);
+      prepareAndConvert(id); // Enter — сразу
+    }
   });
 });
+
+// Кнопка как запасной вариант
+document.getElementById('calc-btn').addEventListener('click', convert);
 
 // Init
 fetchRates();
