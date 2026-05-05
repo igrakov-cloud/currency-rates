@@ -213,15 +213,15 @@ function fmt$(n) { return '$' + Number(n).toLocaleString('en-US',{minimumFractio
 
 async function fetchRates() {
   const cUsd = getCache('u'), cThb = getCache('t'), cBtc = getCache('b');
-  if (cUsd) state.usdRub = cUsd;
-  if (cThb) state.thbRub = cThb;
+  if (cUsd) state.usdRub = Math.round(cUsd * 100) / 100;
+  if (cThb) state.thbRub = Math.round(cThb * 100) / 100;
   if (cBtc) state.btcUsd = cBtc;
 
   try {
     const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
     const d = await r.json();
-    state.usdRub = d.Valute.USD.Value / (d.Valute.USD.Nominal || 1);
-    state.thbRub = d.Valute.THB.Value / (d.Valute.THB.Nominal || 1);
+    state.usdRub = Math.round(d.Valute.USD.Value / (d.Valute.USD.Nominal || 1) * 100) / 100;
+    state.thbRub = Math.round(d.Valute.THB.Value / (d.Valute.THB.Nominal || 1) * 100) / 100;
     setCache('u', state.usdRub);
     setCache('t', state.thbRub);
   } catch {}
@@ -242,7 +242,7 @@ function renderAll() {
 
   // Main rates tab
   document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
-  document.getElementById('thb-rate').textContent = t ? fmt(t,4) + ' ₽' : '—';
+  document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
   document.getElementById('thb-usd').textContent = '📊 ЦБ РФ · 1 THB ≈ ' + (u && t ? fmt(t/u,4) : '—') + ' $';
   document.getElementById('btc-rate').textContent = b ? fmt$(b) : '—';
   document.getElementById('btc-rub').textContent = '📊 CoinGecko · ' + ((u && b) ? '₽ ' + fmt(b*u, 0) : '—');
@@ -254,9 +254,9 @@ function renderAll() {
   // Converter rates
   document.getElementById('rate-usd').textContent = u ? '📊 ЦБ РФ: 1 $ = ' + fmt(u,2) + ' ₽' : '⏳';
   if (u && t) {
-    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,4) + ' ₽ = ' + fmt(t/u,4) + ' $';
+    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽ = ' + fmt(t/u,4) + ' $';
   } else {
-    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,4) + ' ₽' : '⏳';
+    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽' : '⏳';
   }
   document.getElementById('rate-btc').textContent = (u && b) ? '📊 CoinGecko: 1 BTC = ' + fmt$(b) + ' = ' + fmt(b*u,0) + ' ₽' : '⏳';
 }
