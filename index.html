@@ -242,7 +242,7 @@ function renderAll() {
 
   // Main rates tab
   document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
-  document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
+  document.getElementById('thb-rate').textContent = t ? fmt(t,4) + ' ₽' : '—';
   document.getElementById('thb-usd').textContent = '📊 ЦБ РФ · 1 THB ≈ ' + (u && t ? fmt(t/u,4) : '—') + ' $';
   document.getElementById('btc-rate').textContent = b ? fmt$(b) : '—';
   document.getElementById('btc-rub').textContent = '📊 CoinGecko · ' + ((u && b) ? '₽ ' + fmt(b*u, 0) : '—');
@@ -254,9 +254,9 @@ function renderAll() {
   // Converter rates
   document.getElementById('rate-usd').textContent = u ? '📊 ЦБ РФ: 1 $ = ' + fmt(u,2) + ' ₽' : '⏳';
   if (u && t) {
-    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽ = ' + fmt(t/u,4) + ' $';
+    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,4) + ' ₽ = ' + fmt(t/u,4) + ' $';
   } else {
-    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽' : '⏳';
+    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,4) + ' ₽' : '⏳';
   }
   document.getElementById('rate-btc').textContent = (u && b) ? '📊 CoinGecko: 1 BTC = ' + fmt$(b) + ' = ' + fmt(b*u,0) + ' ₽' : '⏳';
 }
