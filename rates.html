@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Курсы / Конвертер</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', sans-serif;
+    background: #0d0d0d;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    background: #1a1a1a;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .tab.active { background: #2a2a2a; color: #fff; }
+
+  .panel { display: none; width: 100%; max-width: 400px; }
+  .panel.active { display: block; }
+
+  .card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .card .label {
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .card .value {
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+  .card .sub { font-size: 12px; color: #666; margin-top: 4px; }
+
+  .refresh-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #2a6eff;
+    border-radius: 14px;
+    padding: 12px 16px;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .refresh-bar:active { background: #1a5eef; }
+  .refresh-bar.loading { background: #555; }
+  .refresh-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .conv-card {
+    background: #1a1a1a;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+  }
+  .conv-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .conv-input {
+    flex: 1;
+    background: #2a2a2a;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 20px;
+    font-weight: 500;
+    color: #fff;
+    outline: none;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .conv-input::placeholder { color: #555; }
+  .conv-input:focus { background: #333; }
+  .conv-currency {
+    font-size: 14px;
+    font-weight: 600;
+    color: #888;
+    min-width: 38px;
+    text-align: right;
+  }
+
+  .conv-rate {
+    font-size: 12px;
+    color: #555;
+    padding: 4px 0 10px 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="tabs">
+  <div class="tab active" data-tab="rates">Курсы</div>
+  <div class="tab" data-tab="convert">Конвертер</div>
+</div>
+
+<div class="panel active" id="panel-rates">
+  <div class="card">
+    <div class="label">🇺🇸 Доллар → Рубль</div>
+    <div class="value" id="usd-rate">—</div>
+    <div class="sub">📊 ЦБ РФ</div>
+  </div>
+  <div class="card">
+    <div class="label">🇹🇭 Тайский бат → Рубль</div>
+    <div class="value" id="thb-rate">—</div>
+    <div class="sub" id="thb-usd">📊 ЦБ РФ</div>
+  </div>
+  <div class="card">
+    <div class="label">₿ Биткоин → Доллар</div>
+    <div class="value" id="btc-rate">—</div>
+    <div class="sub" id="btc-rub">📊 CoinGecko</div>
+  </div>
+  <div class="refresh-bar" id="refresh-btn">
+    <span class="refresh-text" id="update-time">⏳ загрузка...</span>
+  </div>
+</div>
+
+<div class="panel" id="panel-convert">
+  <div class="conv-card">
+    <div class="conv-row">
+      <input class="conv-input" id="in-rub" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="рубли">
+      <span class="conv-currency">₽</span>
+    </div>
+    <div class="conv-rate" id="rate-usd">1 $ = —</div>
+
+    <div class="conv-row">
+      <input class="conv-input" id="in-usd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="доллары">
+      <span class="conv-currency">$</span>
+    </div>
+    <div class="conv-rate" id="rate-thb">1 THB = —</div>
+
+    <div class="conv-row">
+      <input class="conv-input" id="in-thb" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="тайские баты">
+      <span class="conv-currency">THB</span>
+    </div>
+    <div class="conv-rate" id="rate-btc">1 BTC = —</div>
+
+    <div class="conv-row">
+      <input class="conv-input" id="in-btc" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="биткоины">
+      <span class="conv-currency">BTC</span>
+    </div>
+
+    <div class="refresh-bar" id="refresh-btn2" style="margin-top:16px">
+      <span class="refresh-text" id="update-time2">⏳ загрузка...</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = { usdRub: null, thbRub: null, btcUsd: null };
+const displayRate = { usd: null, thb: null, btc: null };
+const CACHE_TTL = 300000;
+
+function getCache(k) {
+  try { const r = localStorage.getItem(k); if (!r) return null; const {d,t}=JSON.parse(r); if (Date.now()-t>CACHE_TTL) return null; return d; } catch { return null; }
+}
+function setCache(k, d) {
+  try { localStorage.setItem(k, JSON.stringify({d,t:Date.now()})); } catch {}
+}
+function clr(s) {
+  if (!s) return 0;
+  let c = String(s).replace(/[^\d,.\-]/g, '');
+  if (c.includes(',') && c.includes('.')) {
+    if (c.lastIndexOf(',') > c.lastIndexOf('.')) c = c.replace(/\./g, '').replace(',','.');
+    else c = c.replace(/,/g, '');
+  } else if (c.includes(',')) c = c.replace(',','.');
+  return parseFloat(c) || 0;
+}
+function fmt(n, d) { return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function fmt$(n) { return '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+async function fetchRates() {
+  const cUsd = getCache('u'), cThb = getCache('t'), cBtc = getCache('b');
+  if (cUsd) state.usdRub = Math.round(cUsd * 100) / 100;
+  if (cThb) state.thbRub = Math.round(cThb * 100) / 100;
+  if (cBtc) state.btcUsd = cBtc;
+
+  try {
+    const r = await fetch('https://www.cbr-xml-daily.ru/daily_json.js');
+    const d = await r.json();
+    state.usdRub = Math.round(d.Valute.USD.Value / (d.Valute.USD.Nominal || 1) * 100) / 100;
+    state.thbRub = Math.round(d.Valute.THB.Value / (d.Valute.THB.Nominal || 1) * 100) / 100;
+    setCache('u', state.usdRub);
+    setCache('t', state.thbRub);
+  } catch {}
+
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const d = await r.json();
+    state.btcUsd = d.bitcoin.usd;
+    setCache('b', state.btcUsd);
+  } catch {}
+
+  renderAll();
+}
+
+function renderAll() {
+  const now = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const u = state.usdRub, t = state.thbRub, b = state.btcUsd;
+
+  // Keep display rates (rounded to 2 decimals for converter)
+  displayRate.usd = Math.round(u * 100) / 100;
+  displayRate.thb = Math.round(t * 100) / 100;
+  displayRate.btc = b;
+
+  // Main rates tab
+  document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
+  document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
+  document.getElementById('thb-usd').textContent = '📊 ЦБ РФ · 1 THB ≈ ' + (u && t ? fmt(t/u,4) : '—') + ' $';
+  document.getElementById('btc-rate').textContent = b ? fmt$(b) : '—';
+  document.getElementById('btc-rub').textContent = '📊 CoinGecko · ' + ((u && b) ? '₽ ' + fmt(b*u, 0) : '—');
+
+  // Update times
+  document.getElementById('update-time').textContent = '🔄 ' + now;
+  document.getElementById('update-time2').textContent = '🔄 ' + now;
+
+  // Converter rates
+  document.getElementById('rate-usd').textContent = u ? '📊 ЦБ РФ: 1 $ = ' + fmt(u,2) + ' ₽' : '⏳';
+  if (u && t) {
+    document.getElementById('rate-thb').textContent = '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽ = ' + fmt(t/u,4) + ' $';
+  } else {
+    document.getElementById('rate-thb').textContent = t ? '📊 ЦБ РФ: 1 THB = ' + fmt(t,2) + ' ₽' : '⏳';
+  }
+  document.getElementById('rate-btc').textContent = (u && b) ? '📊 CoinGecko: 1 BTC = ' + fmt$(b) + ' = ' + fmt(b*u,0) + ' ₽' : '⏳';
+}
+
+async function refreshAll() {
+  const btns = [document.getElementById('refresh-btn'), document.getElementById('refresh-btn2')];
+  btns.forEach(b => { b.classList.add('loading'); b.querySelector('span').textContent = '⏳ обновление...'; });
+  await fetchRates();
+  btns.forEach(b => { b.classList.remove('loading'); b.querySelector('span').textContent = '🔄 ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}); });
+}
+
+function convert() {
+  const r = clr(document.getElementById('in-rub').value);
+  const d = clr(document.getElementById('in-usd').value);
+  const t = clr(document.getElementById('in-thb').value);
+  const b = clr(document.getElementById('in-btc').value);
+
+  const filled = [['rub',r],['usd',d],['thb',t],['btc',b]].filter(p => p[1] > 0);
+  if (filled.length !== 1) return;
+
+  const [src, val] = filled[0];
+  let inRub = 0;
+  if (src === 'rub') inRub = val;
+  else if (src === 'usd' && displayRate.usd) inRub = val * displayRate.usd;
+  else if (src === 'thb' && displayRate.thb) inRub = val * displayRate.thb;
+  else if (src === 'btc' && displayRate.btc && displayRate.usd) inRub = val * displayRate.btc * displayRate.usd;
+  if (!inRub) return;
+
+  const fields = { rub: document.getElementById('in-rub'), usd: document.getElementById('in-usd'), thb: document.getElementById('in-thb'), btc: document.getElementById('in-btc') };
+  if (src !== 'rub') fields.rub.value = fmt(inRub, 2);
+  if (src !== 'usd') fields.usd.value = fmt(inRub / displayRate.usd, 2);
+  if (src !== 'thb') fields.thb.value = fmt(inRub / displayRate.thb, 2);
+  if (src !== 'btc') fields.btc.value = fmt(inRub / (displayRate.btc * displayRate.usd), 8);
+}
+
+function autoConvert(srcId) {
+  const ids = ['in-rub','in-usd','in-thb','in-btc'];
+  const others = ids.filter(id => id !== srcId);
+  const val = document.getElementById(srcId).value.trim();
+  // Если поле пустое или 0 — очищаем все остальные
+  if (!val || clr(val) === 0) {
+    others.forEach(id => document.getElementById(id).value = '');
+    return;
+  }
+  others.forEach(id => document.getElementById(id).value = '');
+  convert();
+}
+
+const debounceTimers = {};
+['in-rub','in-usd','in-thb','in-btc'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    clearTimeout(debounceTimers[id]);
+    debounceTimers[id] = setTimeout(() => autoConvert(id), 300);
+  });
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === 'Return') autoConvert(id);
+  });
+});
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-' + t.dataset.tab).classList.add('active');
+  });
+});
+
+// Refresh
+document.getElementById('refresh-btn').addEventListener('click', refreshAll);
+document.getElementById('refresh-btn2').addEventListener('click', refreshAll);
+
+// Init
+fetchRates();
+setInterval(fetchRates, 60000);
+</script>
+</body>
+</html>
