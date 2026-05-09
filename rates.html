@@ -191,6 +191,7 @@
 
 <script>
 const state = { usdRub: null, thbRub: null, btcUsd: null };
+const displayRate = { usd: null, thb: null, btc: null };
 const CACHE_TTL = 300000;
 
 function getCache(k) {
@@ -240,6 +241,11 @@ function renderAll() {
   const now = new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   const u = state.usdRub, t = state.thbRub, b = state.btcUsd;
 
+  // Keep display rates (rounded to 2 decimals for converter)
+  displayRate.usd = Math.round(u * 100) / 100;
+  displayRate.thb = Math.round(t * 100) / 100;
+  displayRate.btc = b;
+
   // Main rates tab
   document.getElementById('usd-rate').textContent = u ? fmt(u,2) + ' ₽' : '—';
   document.getElementById('thb-rate').textContent = t ? fmt(t,2) + ' ₽' : '—';
@@ -280,16 +286,16 @@ function convert() {
   const [src, val] = filled[0];
   let inRub = 0;
   if (src === 'rub') inRub = val;
-  else if (src === 'usd' && state.usdRub) inRub = val * state.usdRub;
-  else if (src === 'thb' && state.thbRub) inRub = val * state.thbRub;
-  else if (src === 'btc' && state.btcUsd && state.usdRub) inRub = val * state.btcUsd * state.usdRub;
+  else if (src === 'usd' && displayRate.usd) inRub = val * displayRate.usd;
+  else if (src === 'thb' && displayRate.thb) inRub = val * displayRate.thb;
+  else if (src === 'btc' && displayRate.btc && displayRate.usd) inRub = val * displayRate.btc * displayRate.usd;
   if (!inRub) return;
 
   const fields = { rub: document.getElementById('in-rub'), usd: document.getElementById('in-usd'), thb: document.getElementById('in-thb'), btc: document.getElementById('in-btc') };
   if (src !== 'rub') fields.rub.value = fmt(inRub, 2);
-  if (src !== 'usd') fields.usd.value = fmt(inRub / state.usdRub, 2);
-  if (src !== 'thb') fields.thb.value = fmt(inRub / state.thbRub, 2);
-  if (src !== 'btc') fields.btc.value = fmt(inRub / (state.btcUsd * state.usdRub), 8);
+  if (src !== 'usd') fields.usd.value = fmt(inRub / displayRate.usd, 2);
+  if (src !== 'thb') fields.thb.value = fmt(inRub / displayRate.thb, 2);
+  if (src !== 'btc') fields.btc.value = fmt(inRub / (displayRate.btc * displayRate.usd), 8);
 }
 
 function autoConvert(srcId) {
